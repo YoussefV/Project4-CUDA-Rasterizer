@@ -30,7 +30,7 @@ glm::vec3 multiplyMV(glm::mat4 m, glm::vec4 v) {
  * Finds the axis aligned bounding box for a given triangle.
  */
 __host__ __device__ static
-AABB getAABBForTriangle(const glm::vec3 tri[3]) {
+AABB getAABBForTriangleAndClamp(const glm::vec3 tri[3], const int width, const int height) {
     AABB aabb;
     aabb.min = glm::vec3(
             min(min(tri[0].x, tri[1].x), tri[2].x),
@@ -40,6 +40,9 @@ AABB getAABBForTriangle(const glm::vec3 tri[3]) {
             max(max(tri[0].x, tri[1].x), tri[2].x),
             max(max(tri[0].y, tri[1].y), tri[2].y),
             max(max(tri[0].z, tri[1].z), tri[2].z));
+
+	aabb.min = glm::clamp(aabb.min, glm::vec3(0.f), glm::vec3(width, height, 1));
+	aabb.max = glm::clamp(aabb.max, glm::vec3(0.f), glm::vec3(width, height, 1));
     return aabb;
 }
 
@@ -90,7 +93,7 @@ bool isBarycentricCoordInBounds(const glm::vec3 barycentricCoord) {
 
 // CHECKITOUT
 /**
- * For a given barycentric coordinate, compute the corresponding z position
+ * For a give barycentric coordinate, compute the corresponding z position
  * (i.e. depth) on the triangle.
  */
 __host__ __device__ static

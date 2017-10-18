@@ -18,6 +18,11 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#define num_instances  1
+
+//Number of pixel samples taken
+#define SSAA_RES 8
+
 namespace {
 
 	typedef unsigned short VertexIndex;
@@ -43,7 +48,7 @@ namespace {
 
 		 glm::vec3 eyePos;	// eye space position used for shading
 		 glm::vec3 eyeNor;	// eye space normal used for shading, cuz normal will go wrong after perspective transformation
-		// glm::vec3 col;
+		 glm::vec3 color;
 		 glm::vec2 texcoord0;
 		 TextureData* dev_diffuseTex = NULL;
 		// int texWidth, texHeight;
@@ -111,6 +116,8 @@ static glm::vec3 *dev_framebuffer = NULL;
 
 static int * dev_depth = NULL;	// you might need this buffer when doing depth test
 
+static glm::mat4* dev_instance_transforms = NULL;
+
 /**
  * Kernel that writes the image to the OpenGL PBO directly.
  */
@@ -140,13 +147,40 @@ __global__
 void render(int w, int h, Fragment *fragmentBuffer, glm::vec3 *framebuffer) {
     int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     int y = (blockIdx.y * blockDim.y) + threadIdx.y;
-    int index = x + (y * w);
+
+	//SUPER SAMPLING ANTI ALIASING
+	glm::vec3 avg_color = glm::vec3(0.f);
+	float n_samples = 0;
 
     if (x < w && y < h) {
-        framebuffer[index] = fragmentBuffer[index].color;
+#if SSAA_RES > 1
+		//Get fragment avg's
+		int res_bound = SSAA_RES / 2;
+		for (int sx = -res_bound; sx < res_bound; sx++) {
+			for (int sy = -res_bound; sy < res_bound; sy++) {
+				int xsx = x*SSAA_RES + sx;
+				int ysy = y*SSAA_RES + sy;
+
+				if (xsx < 0 || xsx >= (w * SSAA_RES) || (ysy < 0) || (ysy >= h * SSAA_RES)) {
+					continue;
+				}
+
+				int index = xsx + (ysy * (w * SSAA_RES));
+				avg_color += fragmentBuffer[index].color;
+				n_samples++;
+			}
+		}
+
+		avg_color /= (n_samples);
+
+		int frame_idx = x + (y * w);
+        framebuffer[frame_idx] = avg_color;
+#else
+		int index = x + (y * w);
+		framebuffer[index] = fragmentBuffer[index].color;
+#endif
 
 		// TODO: add your fragment shader code here
-
     }
 }
 
@@ -154,19 +188,59 @@ void render(int w, int h, Fragment *fragmentBuffer, glm::vec3 *framebuffer) {
  * Called once at the beginning of the program to allocate memory.
  */
 void rasterizeInit(int w, int h) {
-    width = w;
-    height = h;
+	width = w * SSAA_RES;
+	height = h * SSAA_RES;
 	cudaFree(dev_fragmentBuffer);
 	cudaMalloc(&dev_fragmentBuffer, width * height * sizeof(Fragment));
 	cudaMemset(dev_fragmentBuffer, 0, width * height * sizeof(Fragment));
-    cudaFree(dev_framebuffer);
-    cudaMalloc(&dev_framebuffer,   width * height * sizeof(glm::vec3));
-    cudaMemset(dev_framebuffer, 0, width * height * sizeof(glm::vec3));
-    
+	cudaFree(dev_framebuffer);
+	cudaMalloc(&dev_framebuffer,   (width / SSAA_RES) * (height / SSAA_RES) * sizeof(glm::vec3));
+	cudaMemset(dev_framebuffer, 0, (width / SSAA_RES) * (height / SSAA_RES) * sizeof(glm::vec3));
+
 	cudaFree(dev_depth);
 	cudaMalloc(&dev_depth, width * height * sizeof(int));
-
 	checkCUDAError("rasterizeInit");
+
+	//Create Instances
+	glm::mat4 instance_transforms[num_instances];
+
+	const float delta = 1.5f;
+	
+	//instance_transforms[0] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,-delta, 0));
+	//instance_transforms[1] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, delta, 0));
+	//instance_transforms[2] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,     0, 0));
+	//instance_transforms[3] = glm::translate(glm::mat4(1.f), glm::vec3( delta,-delta, 0));
+	//instance_transforms[4] = glm::translate(glm::mat4(1.f), glm::vec3( delta, delta, 0));
+	//instance_transforms[5] = glm::translate(glm::mat4(1.f), glm::vec3( delta,     0, 0));
+	//instance_transforms[6] = glm::translate(glm::mat4(1.f), glm::vec3(     0,-delta, 0));
+	//instance_transforms[7] = glm::translate(glm::mat4(1.f), glm::vec3(     0, delta, 0));
+	instance_transforms[0] = glm::translate(glm::mat4(1.f), glm::vec3(     0,     0, 0));
+	//
+	//instance_transforms[9]  = glm::translate(glm::mat4(1.f), glm::vec3(-delta, -delta,-delta));
+	//instance_transforms[10] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,  delta,-delta));
+	//instance_transforms[11] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,  0,    -delta));
+	//instance_transforms[12] = glm::translate(glm::mat4(1.f), glm::vec3( delta, -delta,-delta));
+	//instance_transforms[13] = glm::translate(glm::mat4(1.f), glm::vec3( delta,  delta,-delta));
+	//instance_transforms[14] = glm::translate(glm::mat4(1.f), glm::vec3( delta,      0,-delta));
+	//instance_transforms[15] = glm::translate(glm::mat4(1.f), glm::vec3(     0, -delta,-delta));
+	//instance_transforms[16] = glm::translate(glm::mat4(1.f), glm::vec3(     0,  delta,-delta));
+	//instance_transforms[17] = glm::translate(glm::mat4(1.f), glm::vec3(     0,      0,-delta));
+	//
+	//
+	//instance_transforms[18] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, -delta, delta));
+	//instance_transforms[19] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, delta, delta));
+	//instance_transforms[20] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, 0, delta));
+	//instance_transforms[21] = glm::translate(glm::mat4(1.f), glm::vec3(delta, -delta, delta));
+	//instance_transforms[22] = glm::translate(glm::mat4(1.f), glm::vec3(delta, delta, delta));
+	//instance_transforms[23] = glm::translate(glm::mat4(1.f), glm::vec3(delta, 0, delta));
+	//instance_transforms[24] = glm::translate(glm::mat4(1.f), glm::vec3(0, -delta, delta));
+	//instance_transforms[25] = glm::translate(glm::mat4(1.f), glm::vec3(0, delta, delta));
+	//instance_transforms[26] = glm::translate(glm::mat4(1.f), glm::vec3(0, 0, delta));
+
+	cudaMalloc(&dev_instance_transforms, sizeof(glm::mat4) * num_instances);
+	cudaMemcpy(dev_instance_transforms, instance_transforms, sizeof(glm::mat4) * num_instances, cudaMemcpyHostToDevice);
+
+	checkCUDAError("rasterizeInit - Instance Cpying");
 }
 
 __global__
@@ -389,6 +463,7 @@ void rasterizeSetBuffers(const tinygltf::Scene & scene) {
 					// assume type is SCALAR for indices
 					int n = 1;
 					int numIndices = indexAccessor.count;
+
 					int componentTypeByteSize = sizeof(VertexIndex);
 					int byteLength = numIndices * n * componentTypeByteSize;
 
@@ -513,7 +588,7 @@ void rasterizeSetBuffers(const tinygltf::Scene & scene) {
 
 					// malloc for VertexOut
 					VertexOut* dev_vertexOut;
-					cudaMalloc(&dev_vertexOut, numVertices * sizeof(VertexOut));
+					cudaMalloc(&dev_vertexOut, numVertices * num_instances * sizeof(VertexOut));
 					checkCUDAError("Malloc VertexOut Buffer");
 
 					// ----------Materials-------------
@@ -595,6 +670,8 @@ void rasterizeSetBuffers(const tinygltf::Scene & scene) {
 		} // for each node
 
 	}
+
+	totalNumPrimitives *= num_instances;
 	
 
 	// 3. Malloc for dev_primitives
@@ -628,20 +705,33 @@ void _vertexTransformAndAssembly(
 	int numVertices, 
 	PrimitiveDevBufPointers primitive, 
 	glm::mat4 MVP, glm::mat4 MV, glm::mat3 MV_normal, 
-	int width, int height) {
+	int width, int height, const glm::mat4* dev_instance_transforms) {
 
 	// vertex id
 	int vid = (blockIdx.x * blockDim.x) + threadIdx.x;
 	if (vid < numVertices) {
-
-		// TODO: Apply vertex transformation here
-		// Multiply the MVP matrix for each vertex position, this will transform everything into clipping space
-		// Then divide the pos by its w element to transform into NDC space
-		// Finally transform x and y to viewport space
-
-		// TODO: Apply vertex assembly here
-		// Assemble all attribute arraies into the primitive array
 		
+		//INSTANCING:
+		for (int i = 0; i < num_instances; i++) {
+			// Multiply the MVP matrix for each vertex position, this will transform everything into clipping space
+			const glm::vec4 instance_pos = dev_instance_transforms[i] * glm::vec4(primitive.dev_position[vid],1);
+			glm::vec4 new_pos = MVP * instance_pos;
+
+			// Then divide the pos by its w element to transform into NDC space
+			new_pos *= (1.f / new_pos.w);
+
+			// Finally transform x and y to viewport space
+			new_pos.x = 0.5f * width  * (1.f - new_pos.x);
+			new_pos.y = 0.5f * height * (1.f - new_pos.y);
+
+			// Assemble all attribute arrays into the primitive array
+			int instance_idx = vid + (primitive.numVertices * i);
+			primitive.dev_verticesOut[instance_idx].pos = new_pos;
+			primitive.dev_verticesOut[instance_idx].color = glm::vec3(0, 1, 1);
+			primitive.dev_verticesOut[instance_idx].eyePos = glm::vec3(MV * instance_pos);
+			primitive.dev_verticesOut[instance_idx].eyeNor = glm::normalize(MV_normal * primitive.dev_normal[vid]);
+		}
+
 	}
 }
 
@@ -660,12 +750,18 @@ void _primitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* dev_
 		// TODO: uncomment the following code for a start
 		// This is primitive assembly for triangles
 
-		//int pid;	// id for cur primitives vector
-		//if (primitive.primitiveMode == TINYGLTF_MODE_TRIANGLES) {
-		//	pid = iid / (int)primitive.primitiveType;
-		//	dev_primitives[pid + curPrimitiveBeginId].v[iid % (int)primitive.primitiveType]
-		//		= primitive.dev_verticesOut[primitive.dev_indices[iid]];
-		//}
+		int pid;	// id for cur primitives vector
+		if (primitive.primitiveMode == TINYGLTF_MODE_TRIANGLES) {
+			pid = iid / (int)primitive.primitiveType;
+
+			//Primitive Instancing
+			for (int i = 0; i < num_instances; i++) {
+				int inst_pid = pid + curPrimitiveBeginId + primitive.numPrimitives * i;
+				int vid = primitive.dev_indices[iid] + primitive.numVertices * i;
+
+				dev_primitives[inst_pid].v[iid % (int)primitive.primitiveType]  = primitive.dev_verticesOut[vid];
+			}
+		}
 
 
 		// TODO: other primitive types (point, line)
@@ -673,7 +769,80 @@ void _primitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* dev_
 	
 }
 
+__global__
+void _kern_rasterize(const int numPrims, Primitive* dev_primitives,
+	int* dev_depth, const int width, const int height,
+	Fragment* dev_fragments) {
 
+	// Prim Bounds Check
+	const int pid = (blockIdx.x * blockDim.x) + threadIdx.x;
+	if (pid >= numPrims) return;
+
+	Primitive prim = dev_primitives[pid];
+
+	const glm::vec3 p1 = glm::vec3(prim.v[0].pos);
+	const glm::vec3 p2 = glm::vec3(prim.v[1].pos);
+	const glm::vec3 p3 = glm::vec3(prim.v[2].pos);
+
+	//Backface Culling
+	const glm::vec3 tri_nor = glm::cross(p2 - p1, p3 - p1);
+	if (tri_nor.z < 0) { return; }
+
+	const glm::vec3 tri[3] = { p1, p2, p3 };
+
+	const AABB bounds = getAABBForTriangleAndClamp(tri,width,height);
+
+	for (int x = bounds.min.x; x < bounds.max.x; x++) {
+		for (int y = bounds.min.y; y < bounds.max.y; y++) {
+			if (x >= width || y >= height) { break; }
+			
+			//Get Barycentric coordinate
+			const glm::vec3 baryc = calculateBarycentricCoordinate(tri, glm::vec2(x, y));
+			
+			//Only color in fragments that are within tri
+			if (isBarycentricCoordInBounds(baryc)) {
+				glm::vec3 one_over_tri[3] = { glm::vec3(tri[0].x, tri[0].y, 1.0 / tri[0].z),
+											  glm::vec3(tri[1].x, tri[1].y, 1.0 / tri[1].z),
+											  glm::vec3(tri[2].x, tri[2].y, 1.0 / tri[2].z) };
+
+				//Perspective correct interpolation of z in screen space
+				const float z_interpolated = -1.0 / getZAtCoordinate(baryc, one_over_tri);
+
+				const glm::vec3 frag_eyeNor = baryc[0] * prim.v[0].eyeNor +
+					                          baryc[1] * prim.v[1].eyeNor +
+					                          baryc[2] * prim.v[2].eyeNor;
+
+				//Correct color interpolation between points on a primitive
+				const glm::vec3 frag_col = baryc[0] * prim.v[0].color +
+					                       baryc[1] * prim.v[1].color +
+					                       baryc[2] * prim.v[2].color;
+
+				//Depth Buffer Precision Factor
+				const float dbuf_int_precision = 100000;
+
+				const int z_int = z_interpolated  * dbuf_int_precision;
+
+				int index = x + (y * width);
+
+				int* frag_depth = &dev_depth[index];
+				int  old_value = *frag_depth;
+
+				atomicMin(frag_depth, z_int);
+
+				__syncthreads();
+
+				//Which pixel won? +Determined Here.
+				//This is much cleaner code than using atomicCAS
+				if (*frag_depth == z_int) {
+				  //If this is less than current_depth
+					dev_fragments[index].color = glm::dot(frag_eyeNor, glm::normalize(tri_nor)) * frag_col;
+				}
+
+			}
+		}
+	}
+
+}
 
 /**
  * Perform rasterization.
@@ -702,7 +871,8 @@ void rasterize(uchar4 *pbo, const glm::mat4 & MVP, const glm::mat4 & MV, const g
 				dim3 numBlocksForVertices((p->numVertices + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x);
 				dim3 numBlocksForIndices((p->numIndices + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x);
 
-				_vertexTransformAndAssembly << < numBlocksForVertices, numThreadsPerBlock >> >(p->numVertices, *p, MVP, MV, MV_normal, width, height);
+				_vertexTransformAndAssembly << < numBlocksForVertices, numThreadsPerBlock >> >(p->numVertices, *p, MVP, MV, MV_normal, width, height,
+					                                                                   dev_instance_transforms);
 				checkCUDAError("Vertex Processing");
 				cudaDeviceSynchronize();
 				_primitiveAssembly << < numBlocksForIndices, numThreadsPerBlock >> >
@@ -723,14 +893,18 @@ void rasterize(uchar4 *pbo, const glm::mat4 & MVP, const glm::mat4 & MV, const g
 	initDepth << <blockCount2d, blockSize2d >> >(width, height, dev_depth);
 	
 	// TODO: rasterize
-
+	const int numThreadsPerBlock = 128;
+	const int numBlocksForPrimitives = (totalNumPrimitives + numThreadsPerBlock - 1) / numThreadsPerBlock;
+	_kern_rasterize << <numBlocksForPrimitives, numThreadsPerBlock >> >(totalNumPrimitives, dev_primitives,
+		dev_depth, width, height, dev_fragmentBuffer);
+	checkCUDAError("_kern_rasterize");
 
 
     // Copy depthbuffer colors into framebuffer
-	render << <blockCount2d, blockSize2d >> >(width, height, dev_fragmentBuffer, dev_framebuffer);
+	render << <blockCount2d, blockSize2d >> >(width/SSAA_RES, height/SSAA_RES, dev_fragmentBuffer, dev_framebuffer);
 	checkCUDAError("fragment shader");
     // Copy framebuffer into OpenGL buffer for OpenGL previewing
-    sendImageToPBO<<<blockCount2d, blockSize2d>>>(pbo, width, height, dev_framebuffer);
+    sendImageToPBO<<<blockCount2d, blockSize2d>>>(pbo, width / SSAA_RES, height / SSAA_RES, dev_framebuffer);
     checkCUDAError("copy render result to pbo");
 }
 
@@ -753,7 +927,7 @@ void rasterizeFree() {
 
 			cudaFree(p->dev_verticesOut);
 
-			
+
 			//TODO: release other attributes and materials
 		}
 	}
@@ -771,6 +945,9 @@ void rasterizeFree() {
 
 	cudaFree(dev_depth);
 	dev_depth = NULL;
+
+	cudaFree(dev_instance_transforms);
+	dev_instance_transforms = NULL;
 
     checkCUDAError("rasterize Free");
 }
