@@ -18,10 +18,10 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#define num_instances  1
+#define num_instances  27
 
 //Number of pixel samples taken
-#define SSAA_RES 8
+#define SSAA_RES 2
 
 namespace {
 
@@ -206,36 +206,36 @@ void rasterizeInit(int w, int h) {
 
 	const float delta = 1.5f;
 	
-	//instance_transforms[0] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,-delta, 0));
-	//instance_transforms[1] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, delta, 0));
-	//instance_transforms[2] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,     0, 0));
-	//instance_transforms[3] = glm::translate(glm::mat4(1.f), glm::vec3( delta,-delta, 0));
-	//instance_transforms[4] = glm::translate(glm::mat4(1.f), glm::vec3( delta, delta, 0));
-	//instance_transforms[5] = glm::translate(glm::mat4(1.f), glm::vec3( delta,     0, 0));
-	//instance_transforms[6] = glm::translate(glm::mat4(1.f), glm::vec3(     0,-delta, 0));
-	//instance_transforms[7] = glm::translate(glm::mat4(1.f), glm::vec3(     0, delta, 0));
-	instance_transforms[0] = glm::translate(glm::mat4(1.f), glm::vec3(     0,     0, 0));
-	//
-	//instance_transforms[9]  = glm::translate(glm::mat4(1.f), glm::vec3(-delta, -delta,-delta));
-	//instance_transforms[10] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,  delta,-delta));
-	//instance_transforms[11] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,  0,    -delta));
-	//instance_transforms[12] = glm::translate(glm::mat4(1.f), glm::vec3( delta, -delta,-delta));
-	//instance_transforms[13] = glm::translate(glm::mat4(1.f), glm::vec3( delta,  delta,-delta));
-	//instance_transforms[14] = glm::translate(glm::mat4(1.f), glm::vec3( delta,      0,-delta));
-	//instance_transforms[15] = glm::translate(glm::mat4(1.f), glm::vec3(     0, -delta,-delta));
-	//instance_transforms[16] = glm::translate(glm::mat4(1.f), glm::vec3(     0,  delta,-delta));
-	//instance_transforms[17] = glm::translate(glm::mat4(1.f), glm::vec3(     0,      0,-delta));
-	//
-	//
-	//instance_transforms[18] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, -delta, delta));
-	//instance_transforms[19] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, delta, delta));
-	//instance_transforms[20] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, 0, delta));
-	//instance_transforms[21] = glm::translate(glm::mat4(1.f), glm::vec3(delta, -delta, delta));
-	//instance_transforms[22] = glm::translate(glm::mat4(1.f), glm::vec3(delta, delta, delta));
-	//instance_transforms[23] = glm::translate(glm::mat4(1.f), glm::vec3(delta, 0, delta));
-	//instance_transforms[24] = glm::translate(glm::mat4(1.f), glm::vec3(0, -delta, delta));
-	//instance_transforms[25] = glm::translate(glm::mat4(1.f), glm::vec3(0, delta, delta));
-	//instance_transforms[26] = glm::translate(glm::mat4(1.f), glm::vec3(0, 0, delta));
+	instance_transforms[0] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,-delta, 0));
+	instance_transforms[1] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, delta, 0));
+	instance_transforms[2] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,     0, 0));
+	instance_transforms[3] = glm::translate(glm::mat4(1.f), glm::vec3( delta,-delta, 0));
+	instance_transforms[4] = glm::translate(glm::mat4(1.f), glm::vec3( delta, delta, 0));
+	instance_transforms[5] = glm::translate(glm::mat4(1.f), glm::vec3( delta,     0, 0));
+	instance_transforms[6] = glm::translate(glm::mat4(1.f), glm::vec3(     0,-delta, 0));
+	instance_transforms[7] = glm::translate(glm::mat4(1.f), glm::vec3(     0, delta, 0));
+	instance_transforms[8] = glm::translate(glm::mat4(1.f), glm::vec3(     0,     0, 0));
+	
+	instance_transforms[9]  = glm::translate(glm::mat4(1.f), glm::vec3(-delta, -delta,-delta));
+	instance_transforms[10] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,  delta,-delta));
+	instance_transforms[11] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,  0,    -delta));
+	instance_transforms[12] = glm::translate(glm::mat4(1.f), glm::vec3( delta, -delta,-delta));
+	instance_transforms[13] = glm::translate(glm::mat4(1.f), glm::vec3( delta,  delta,-delta));
+	instance_transforms[14] = glm::translate(glm::mat4(1.f), glm::vec3( delta,      0,-delta));
+	instance_transforms[15] = glm::translate(glm::mat4(1.f), glm::vec3(     0, -delta,-delta));
+	instance_transforms[16] = glm::translate(glm::mat4(1.f), glm::vec3(     0,  delta,-delta));
+	instance_transforms[17] = glm::translate(glm::mat4(1.f), glm::vec3(     0,      0,-delta));
+	
+	
+	instance_transforms[18] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, -delta, delta));
+	instance_transforms[19] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, delta, delta));
+	instance_transforms[20] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, 0, delta));
+	instance_transforms[21] = glm::translate(glm::mat4(1.f), glm::vec3(delta, -delta, delta));
+	instance_transforms[22] = glm::translate(glm::mat4(1.f), glm::vec3(delta, delta, delta));
+	instance_transforms[23] = glm::translate(glm::mat4(1.f), glm::vec3(delta, 0, delta));
+	instance_transforms[24] = glm::translate(glm::mat4(1.f), glm::vec3(0, -delta, delta));
+	instance_transforms[25] = glm::translate(glm::mat4(1.f), glm::vec3(0, delta, delta));
+	instance_transforms[26] = glm::translate(glm::mat4(1.f), glm::vec3(0, 0, delta));
 
 	cudaMalloc(&dev_instance_transforms, sizeof(glm::mat4) * num_instances);
 	cudaMemcpy(dev_instance_transforms, instance_transforms, sizeof(glm::mat4) * num_instances, cudaMemcpyHostToDevice);
