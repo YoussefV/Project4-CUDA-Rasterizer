@@ -104,6 +104,27 @@ Here are the results, with FPS listed in the window title.
 
 ### Time Analysis
 
+I have time analyses for two major aspects that I implemented AA and Instancing. Instancing scaled pretty much very nicely. Considering I was scaling by O(n^3) each time, the time almost doubled every time, so that's a linear increase in time, which actually means my instancing is actually < O(n). That is cool.
+
+Here is a stacked graph also showing the absolute time (in ms):
+
+![timed_insta](img/timed_inst.PNG)
+
+As you can see, the time doubles even though I'm tripling the number of cows in each time step.
+
+Here is that same graph showing just percentages
+
+![timed_insta](img/timed_inst_100.PNG)
+
+As you can see, because all the work is done int the vertex shader (vertex transform and assembly) stage, the time it takes to transform the vertices gradually becomes the bottleneck.
+
+With AA, the time scaled up very evenly and the bottleneck here was rasterization of course. Here is an absolute time (in ms) stacked graph of that:
+
+![timed_insta](img/timed_aa.PNG)
+
+The time increases evenly as I double my n every time, as such this means my AA is actually O(n^2), which is what you'd expect since I am literally sampling n^2 every time. In the 100% stacked bar graph it is very clear how much the rasterization becomes a factor as we scale. (Also note that the vertex shader becomes more and more irrelevant)
+
+![timed_insta](img/timed_aa_100.PNG)
 
 ### Bloopers
 
