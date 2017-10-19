@@ -7,6 +7,7 @@
  */
 
 #include <cmath>
+#include <chrono>
 #include <cstdio>
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -18,10 +19,13 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#define num_instances  27
+//Number of mesh instances
+#define num_instances 27
 
 //Number of pixel samples taken
-#define SSAA_RES 2
+#define SSAA_RES 1
+
+#define TIMED 1
 
 namespace {
 
@@ -206,36 +210,36 @@ void rasterizeInit(int w, int h) {
 
 	const float delta = 1.5f;
 	
-	instance_transforms[0] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,-delta, 0));
-	instance_transforms[1] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, delta, 0));
-	instance_transforms[2] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,     0, 0));
-	instance_transforms[3] = glm::translate(glm::mat4(1.f), glm::vec3( delta,-delta, 0));
-	instance_transforms[4] = glm::translate(glm::mat4(1.f), glm::vec3( delta, delta, 0));
-	instance_transforms[5] = glm::translate(glm::mat4(1.f), glm::vec3( delta,     0, 0));
-	instance_transforms[6] = glm::translate(glm::mat4(1.f), glm::vec3(     0,-delta, 0));
-	instance_transforms[7] = glm::translate(glm::mat4(1.f), glm::vec3(     0, delta, 0));
-	instance_transforms[8] = glm::translate(glm::mat4(1.f), glm::vec3(     0,     0, 0));
-	
-	instance_transforms[9]  = glm::translate(glm::mat4(1.f), glm::vec3(-delta, -delta,-delta));
-	instance_transforms[10] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,  delta,-delta));
-	instance_transforms[11] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,  0,    -delta));
-	instance_transforms[12] = glm::translate(glm::mat4(1.f), glm::vec3( delta, -delta,-delta));
-	instance_transforms[13] = glm::translate(glm::mat4(1.f), glm::vec3( delta,  delta,-delta));
-	instance_transforms[14] = glm::translate(glm::mat4(1.f), glm::vec3( delta,      0,-delta));
-	instance_transforms[15] = glm::translate(glm::mat4(1.f), glm::vec3(     0, -delta,-delta));
-	instance_transforms[16] = glm::translate(glm::mat4(1.f), glm::vec3(     0,  delta,-delta));
-	instance_transforms[17] = glm::translate(glm::mat4(1.f), glm::vec3(     0,      0,-delta));
-	
-	
-	instance_transforms[18] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, -delta, delta));
-	instance_transforms[19] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, delta, delta));
-	instance_transforms[20] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, 0, delta));
-	instance_transforms[21] = glm::translate(glm::mat4(1.f), glm::vec3(delta, -delta, delta));
-	instance_transforms[22] = glm::translate(glm::mat4(1.f), glm::vec3(delta, delta, delta));
-	instance_transforms[23] = glm::translate(glm::mat4(1.f), glm::vec3(delta, 0, delta));
-	instance_transforms[24] = glm::translate(glm::mat4(1.f), glm::vec3(0, -delta, delta));
-	instance_transforms[25] = glm::translate(glm::mat4(1.f), glm::vec3(0, delta, delta));
-	instance_transforms[26] = glm::translate(glm::mat4(1.f), glm::vec3(0, 0, delta));
+	  instance_transforms[0] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,-delta, 0));
+	  instance_transforms[1] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, delta, 0));
+	  instance_transforms[2] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,     0, 0));
+	  instance_transforms[3] = glm::translate(glm::mat4(1.f), glm::vec3( delta,-delta, 0));
+	  instance_transforms[4] = glm::translate(glm::mat4(1.f), glm::vec3( delta, delta, 0));
+	  instance_transforms[5] = glm::translate(glm::mat4(1.f), glm::vec3( delta,     0, 0));
+	  instance_transforms[6] = glm::translate(glm::mat4(1.f), glm::vec3(     0,-delta, 0));
+	  instance_transforms[7] = glm::translate(glm::mat4(1.f), glm::vec3(     0, delta, 0));
+	  instance_transforms[8] = glm::translate(glm::mat4(1.f), glm::vec3(     0,     0, 0));
+	  
+	  instance_transforms[9]  = glm::translate(glm::mat4(1.f), glm::vec3(-delta, -delta,-delta));
+	  instance_transforms[10] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,  delta,-delta));
+	  instance_transforms[11] = glm::translate(glm::mat4(1.f), glm::vec3(-delta,  0,    -delta));
+	  instance_transforms[12] = glm::translate(glm::mat4(1.f), glm::vec3( delta, -delta,-delta));
+	  instance_transforms[13] = glm::translate(glm::mat4(1.f), glm::vec3( delta,  delta,-delta));
+	  instance_transforms[14] = glm::translate(glm::mat4(1.f), glm::vec3( delta,      0,-delta));
+	  instance_transforms[15] = glm::translate(glm::mat4(1.f), glm::vec3(     0, -delta,-delta));
+	  instance_transforms[16] = glm::translate(glm::mat4(1.f), glm::vec3(     0,  delta,-delta));
+	  instance_transforms[17] = glm::translate(glm::mat4(1.f), glm::vec3(     0,      0,-delta));
+	  
+	  
+	  instance_transforms[18] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, -delta, delta));
+	  instance_transforms[19] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, delta, delta));
+	  instance_transforms[20] = glm::translate(glm::mat4(1.f), glm::vec3(-delta, 0, delta));
+	  instance_transforms[21] = glm::translate(glm::mat4(1.f), glm::vec3(delta, -delta, delta));
+	  instance_transforms[22] = glm::translate(glm::mat4(1.f), glm::vec3(delta, delta, delta));
+	  instance_transforms[23] = glm::translate(glm::mat4(1.f), glm::vec3(delta, 0, delta));
+	  instance_transforms[24] = glm::translate(glm::mat4(1.f), glm::vec3(0, -delta, delta));
+	  instance_transforms[25] = glm::translate(glm::mat4(1.f), glm::vec3(0, delta, delta));
+	  instance_transforms[26] = glm::translate(glm::mat4(1.f), glm::vec3(0, 0, delta));
 
 	cudaMalloc(&dev_instance_transforms, sizeof(glm::mat4) * num_instances);
 	cudaMemcpy(dev_instance_transforms, instance_transforms, sizeof(glm::mat4) * num_instances, cudaMemcpyHostToDevice);
@@ -853,9 +857,13 @@ void rasterize(uchar4 *pbo, const glm::mat4 & MVP, const glm::mat4 & MV, const g
     dim3 blockCount2d((width  - 1) / blockSize2d.x + 1,
 		(height - 1) / blockSize2d.y + 1);
 
+#if TIMED
+	using time_point_t = std::chrono::high_resolution_clock::time_point;
+	time_point_t time_start_cpu = std::chrono::high_resolution_clock::now();
+#endif
+
 	// Execute your rasterization pipeline here
 	// (See README for rasterization pipeline outline.)
-
 	// Vertex Process & primitive assembly
 	{
 		curPrimitiveBeginId = 0;
@@ -888,24 +896,72 @@ void rasterize(uchar4 *pbo, const glm::mat4 & MVP, const glm::mat4 & MV, const g
 
 		checkCUDAError("Vertex Processing and Primitive Assembly");
 	}
+
+#if TIMED
+	cudaDeviceSynchronize();
+	time_point_t time_end_cpu = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double, std::milli> duration = time_end_cpu - time_start_cpu;
+	float elapsed_time = static_cast<decltype(elapsed_time)>(duration.count());
+	printTime(elapsed_time, "VertexTransformAndAssembly (measured using std::chrono).");
+#endif
 	
 	cudaMemset(dev_fragmentBuffer, 0, width * height * sizeof(Fragment));
 	initDepth << <blockCount2d, blockSize2d >> >(width, height, dev_depth);
-	
-	// TODO: rasterize
+
+#if TIMED
+	using time_point_t = std::chrono::high_resolution_clock::time_point;
+	time_start_cpu = std::chrono::high_resolution_clock::now();
+#endif
+
 	const int numThreadsPerBlock = 128;
 	const int numBlocksForPrimitives = (totalNumPrimitives + numThreadsPerBlock - 1) / numThreadsPerBlock;
 	_kern_rasterize << <numBlocksForPrimitives, numThreadsPerBlock >> >(totalNumPrimitives, dev_primitives,
 		dev_depth, width, height, dev_fragmentBuffer);
 	checkCUDAError("_kern_rasterize");
 
+#if TIMED
+	cudaDeviceSynchronize();
+	time_end_cpu = std::chrono::high_resolution_clock::now();
+	duration = time_end_cpu - time_start_cpu;
+	elapsed_time = static_cast<decltype(elapsed_time)>(duration.count());
+	printTime(elapsed_time, "Rasterization (measured using std::chrono).");
+#endif
 
-    // Copy depthbuffer colors into framebuffer
+
+#if TIMED
+	using time_point_t = std::chrono::high_resolution_clock::time_point;
+	time_start_cpu = std::chrono::high_resolution_clock::now();
+#endif
+    
+	// Copy depthbuffer colors into framebuffer
 	render << <blockCount2d, blockSize2d >> >(width/SSAA_RES, height/SSAA_RES, dev_fragmentBuffer, dev_framebuffer);
 	checkCUDAError("fragment shader");
+
+#if TIMED
+	cudaDeviceSynchronize();
+	time_end_cpu = std::chrono::high_resolution_clock::now();
+	duration = time_end_cpu - time_start_cpu;
+	elapsed_time = static_cast<decltype(elapsed_time)>(duration.count());
+	printTime(elapsed_time, "Rendering / FragmentBuffer to FrameBuffer (measured using std::chrono).");
+#endif
+
+
+#if TIMED
+	using time_point_t = std::chrono::high_resolution_clock::time_point;
+	time_start_cpu = std::chrono::high_resolution_clock::now();
+#endif
+
     // Copy framebuffer into OpenGL buffer for OpenGL previewing
     sendImageToPBO<<<blockCount2d, blockSize2d>>>(pbo, width / SSAA_RES, height / SSAA_RES, dev_framebuffer);
     checkCUDAError("copy render result to pbo");
+
+#if TIMED
+	cudaDeviceSynchronize();
+	time_end_cpu = std::chrono::high_resolution_clock::now();
+	duration = time_end_cpu - time_start_cpu;
+	elapsed_time = static_cast<decltype(elapsed_time)>(duration.count());
+	printTime(elapsed_time, "Image To PBO (measured using std::chrono).\n");
+#endif
 }
 
 /**
