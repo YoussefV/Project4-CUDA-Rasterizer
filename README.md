@@ -55,7 +55,11 @@ It is important to always correctly interpolate the color at each vertex, and so
 
 Here is what it looks like without perspective correct interpolation and with (side-by-side):
 
-![Without Perspective-Correct Interpolation](img/not_persp_correct.PNG) ![With Perspective-Correct Interpolation](img/persp_correct.PNG)
+![Without Perspective-Correct Interpolation](img/not-persp-correct.PNG) ![With Perspective-Correct Interpolation](img/persp-correct.PNG)
+
+Here they are in a nice GIF format that shows them back to back. (As with most color-dense GIFs, the colors are reduced for recording purposes, the colors in real life are exactly as they in the pictures above)
+
+![Back-To-Back](img/persp-correction.gif)
 
 
 #### Instancing
