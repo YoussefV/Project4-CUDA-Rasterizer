@@ -53,7 +53,7 @@ The goal of this project was to run an algorithm that clears out all zeros from 
 
 It is important to always correctly interpolate the color at each vertex, and so I did.
 
-Here is what it looks like without perspective correct interpolation and with (side-by-side):
+Here is what a triangle that is leaning back from the camera looks like without perspective correct interpolation and with (side-by-side):
 
 ![Without Perspective-Correct Interpolation](img/not-persp-correct.PNG) ![With Perspective-Correct Interpolation](img/persp-correct.PNG)
 
@@ -61,6 +61,7 @@ Here they are in a nice GIF format that shows them back to back. (As with most c
 
 ![Back-To-Back](img/persp-correction.gif)
 
+As you can see in this very quantized GIF, there is a lot more blue in the triangle without the interpolation because the Z depth is not correctly interpolated!
 
 #### Instancing
 
